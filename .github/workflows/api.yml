@@ -1,0 +1,38 @@
+name: API CI
+
+on:
+  push:
+    paths:
+      - "services/api/**"
+      - ".github/workflows/api.yml"
+  pull_request:
+    paths:
+      - "services/api/**"
+
+defaults:
+  run:
+    working-directory: services/api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: services/api/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint with bandit
+        run: bandit -r app/ -ll
+
+      - name: Run tests
+        run: pytest -v
+        env:
+          DATABASE_URL: sqlite:///./test_ci.db
