@@ -1,4 +1,4 @@
-name: Web CI
+name: Web CI / Deploy
 
 on:
   push:
@@ -15,9 +15,10 @@ defaults:
 
 jobs:
   build:
+    name: Build & typecheck
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: https://priorauth-api-a1bc3b3b3d0c.herokuapp.com
     steps:
       - uses: actions/checkout@v4
 
@@ -39,3 +40,28 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  deploy:
+    name: Deploy to Heroku
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: "."
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Web to Heroku (priorauth-web)
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          cd apps/web
+          git init -b main
+          git config user.email "${{ secrets.HEROKU_EMAIL }}"
+          git config user.name "GitHub Actions"
+          git add -A
+          git commit -m "Deploy from GitHub Actions (${GITHUB_SHA::7})"
+          git push -f \
+            "https://heroku:${HEROKU_API_KEY}@git.heroku.com/priorauth-web.git" \
+            main

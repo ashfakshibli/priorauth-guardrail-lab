@@ -1,4 +1,4 @@
-name: API CI
+name: API CI / Deploy
 
 on:
   push:
@@ -15,6 +15,7 @@ defaults:
 
 jobs:
   test:
+    name: Test (Python 3.12)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,3 +37,28 @@ jobs:
         run: pytest -v
         env:
           DATABASE_URL: sqlite:///./test_ci.db
+
+  deploy:
+    name: Deploy to Heroku
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: "."
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy API to Heroku (priorauth-api)
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          cd services/api
+          git init -b main
+          git config user.email "${{ secrets.HEROKU_EMAIL }}"
+          git config user.name "GitHub Actions"
+          git add -A
+          git commit -m "Deploy from GitHub Actions (${GITHUB_SHA::7})"
+          git push -f \
+            "https://heroku:${HEROKU_API_KEY}@git.heroku.com/priorauth-api.git" \
+            main
