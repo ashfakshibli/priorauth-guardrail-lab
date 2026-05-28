@@ -4,6 +4,14 @@ A synthetic prior authorization decision engine built as a portfolio demo for he
 
 > **DEMO DATA ONLY** — See [DEMO_DATA_ONLY.md](DEMO_DATA_ONLY.md). No PHI, no PII, no real payer integrations.
 
+## Live Demo
+
+| | URL |
+|---|---|
+| **Web App** | https://priorauth-web-6dbd68214f7f.herokuapp.com |
+| **API** | https://priorauth-api-a1bc3b3b3d0c.herokuapp.com |
+| **API Docs (Swagger)** | https://priorauth-api-a1bc3b3b3d0c.herokuapp.com/docs |
+
 ---
 
 ## Architecture
@@ -74,21 +82,25 @@ Open http://localhost:3000
 
 ## Deploy to Heroku
 
-### API
+Pushes to `main` auto-deploy via GitHub Actions: tests run first, then each subdirectory is packaged and force-pushed to its Heroku remote.
+
+| App | Heroku remote | Trigger path |
+|---|---|---|
+| API (FastAPI + Python 3.12) | `priorauth-api` | `services/api/**` |
+| Web (Next.js) | `priorauth-web` | `apps/web/**` |
+
+### Manual first-time setup
 
 ```bash
-heroku create priorauth-api
+heroku create priorauth-api && heroku create priorauth-web
 heroku addons:create heroku-postgresql:essential-0 -a priorauth-api
+heroku config:set NEXT_PUBLIC_API_URL=https://<api-app>.herokuapp.com \
+  NPM_CONFIG_PRODUCTION=false -a priorauth-web
 heroku config:set OPENAI_API_KEY=<your-key> -a priorauth-api   # optional
-git subtree push --prefix services/api heroku-api main
-```
 
-### Web
-
-```bash
-heroku create priorauth-web
-heroku config:set NEXT_PUBLIC_API_URL=https://priorauth-api.herokuapp.com -a priorauth-web
-git subtree push --prefix apps/web heroku-web main
+# Secrets required in GitHub repo:
+# HEROKU_API_KEY  — from `heroku auth:token`
+# HEROKU_EMAIL    — your Heroku account email
 ```
 
 ---
