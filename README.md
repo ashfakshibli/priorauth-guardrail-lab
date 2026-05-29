@@ -155,6 +155,50 @@ heroku config:set OPENAI_API_KEY=<your-key> -a priorauth-api   # optional
 
 ---
 
+## Policy Data Sources
+
+Policy clause text is adapted from **public-domain CMS coverage documents** — no license restrictions, no PHI. This gives the guardrail and eval logic something realistic to cite rather than purely invented criteria.
+
+| Policy Doc | CMS Source | Key Criteria Captured |
+|---|---|---|
+| **POL-MED-001** – Biologics | [CMS Article A52423](https://www.cms.gov/medicare-coverage-database/view/article.aspx?articleId=52423) | MTX + 1 DMARD failure × 90 days; ACR 20% TJC/SJC improvement threshold; step-therapy exception pathway |
+| **POL-IMG-002** – MRI | [NCD 220.2](https://www.cms.gov/medicare-coverage-database/view/ncd.aspx?NCDId=282) + [LCD L34220](https://www.cms.gov/medicare-coverage-database/) | 6-week conservative-care gate; red-flag bypass list (neuro deficit, malignancy, infection, trauma) |
+| **POL-IMG-002** – PET | [NCD 220.6.17](https://www.cms.gov/medicare-coverage-database/view/ncd.aspx?NCDId=229) | Initial anti-tumor strategy; histologic confirmation required; ≤ 3 treatment-response scans |
+| **POL-BH-003** – Behavioral Health | [LCD L33626](https://www.cms.gov/medicare-coverage-database/view/lcd.aspx?LCDId=33626) (Novitas) | PHP criteria; 8-week / 9 hr/week IOP failure before residential; concurrent review required |
+| **POL-SURG-004** – Knee Surgery | [NCD 150.9](https://www.cms.gov/medicare-coverage-database/view/ncd.aspx?NCDId=199) guidance | Mechanical symptoms (locking/catching/giving way) required; degenerative OA pain-only excluded |
+| **POL-PHARM-005** – Infusion | [CMS Article A52423](https://www.cms.gov/medicare-coverage-database/view/article.aspx?articleId=52423) | 2 uneventful infusion-center doses before home transition; prior reactions → mandatory infusion-center |
+
+### Before / After: Clause Quality Comparison
+
+The swap from fully synthetic text to CMS-derived language sharpens the decision engine — the rules engine now matches on clinical thresholds that mirror real payer criteria rather than invented ones.
+
+**Before (synthetic):**
+```
+"MRI of the lumbar spine (CPT 72148) is covered when the member has
+ low back pain lasting > 6 weeks with documented conservative treatment
+ failure, OR red-flag symptoms (e.g., neurological deficits, cancer history)."
+```
+
+**After (CMS NCD 220.2 / LCD L34220 adapted):**
+```
+"MRI of the lumbar spine (CPT 72148) is covered when the member has
+ low back pain with a duration exceeding six (6) weeks AND documented
+ failure of conservative treatment, defined as physician-directed physical
+ therapy, activity modification, or analgesic therapy. Coverage is also
+ approved without the six-week waiting period when red-flag indicators
+ are present, including: new neurological deficit (radiculopathy, bowel
+ or bladder dysfunction), history of malignancy with suspected metastatic
+ disease, fever with suspected spinal infection, or acute trauma.
+ Per CMS NCD 220.2, MRI is a covered service when clinically indicated
+ and ordered by the treating physician."
+```
+
+The revised clause surfaces the specific NCD number, enumerates all four red-flag categories, and uses regulatory phrasing — giving the LLM rationale layer and the eval scoring model grounded language to work with.
+
+> All clause text is adapted for demo purposes. Source documents are U.S. government works in the public domain. See [DEMO_DATA_ONLY.md](DEMO_DATA_ONLY.md).
+
+---
+
 ## Demo Script
 
 1. Open http://localhost:3000
