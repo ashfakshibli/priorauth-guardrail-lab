@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Integer, Float, Boolean, Text, DateTime,
     ForeignKey, JSON, Enum as SAEnum
@@ -63,7 +63,7 @@ class Case(Base):
     clinical_notes_summary = Column(Text)
     policy_document_ids = Column(JSON, default=list)
     status = Column(SAEnum(CaseStatusEnum), default=CaseStatusEnum.pending)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     tags = Column(JSON, default=list)
     runs = relationship("DecisionRun", back_populates="case", cascade="all, delete-orphan")
 
@@ -81,7 +81,7 @@ class DecisionRun(Base):
     guardrail_reasons = Column(JSON, default=list)
     latency_ms = Column(Integer)
     llm_enhanced = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     case = relationship("Case", back_populates="runs")
     trace_events = relationship("TraceEvent", back_populates="run", cascade="all, delete-orphan")
     eval_results = relationship("EvalResult", back_populates="run", cascade="all, delete-orphan", uselist=False)
@@ -129,5 +129,5 @@ class ReviewQueueItem(Base):
     priority = Column(String, nullable=False)
     assigned_to = Column(String)
     resolved = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     run = relationship("DecisionRun", back_populates="review_queue_item")

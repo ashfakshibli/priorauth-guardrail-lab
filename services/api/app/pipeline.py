@@ -5,7 +5,7 @@ Orchestrates: retrieve → decide → guardrail → eval → (optional LLM) → 
 from __future__ import annotations
 import uuid
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models import (
     Case, DecisionRun, TraceEvent, EvalResult, ReviewQueueItem,
@@ -56,8 +56,8 @@ def run_decision_pipeline(case_id: str, db: Session) -> dict:
     seq = 0
 
     # ── Step 1: Load case ───────────────────────────────────────────────────
-    t0 = datetime.utcnow()
-    t1 = datetime.utcnow()
+    t0 = datetime.now(timezone.utc)
+    t1 = datetime.now(timezone.utc)
     trace_events.append(_trace_event(
         run_id, seq := seq + 1, "load_case", "ok", t0, t1,
         f"case_id={case_id}",
@@ -66,7 +66,7 @@ def run_decision_pipeline(case_id: str, db: Session) -> dict:
     ))
 
     # ── Step 2: Retrieve relevant clauses ───────────────────────────────────
-    t0 = datetime.utcnow()
+    t0 = datetime.now(timezone.utc)
     try:
         clauses = retrieve_relevant_clauses(case, db)
         status = "ok"
@@ -77,7 +77,7 @@ def run_decision_pipeline(case_id: str, db: Session) -> dict:
         clauses = []
         status = "error"
         warns = [str(exc)]
-    t1 = datetime.utcnow()
+    t1 = datetime.now(timezone.utc)
     trace_events.append(_trace_event(
         run_id, seq := seq + 1, "retrieve_clauses", status, t0, t1,
         f"doc_ids={case.policy_document_ids}, tags={case.tags}",
@@ -87,9 +87,9 @@ def run_decision_pipeline(case_id: str, db: Session) -> dict:
     ))
 
     # ── Step 3: Rules engine ─────────────────────────────────────────────────
-    t0 = datetime.utcnow()
+    t0 = datetime.now(timezone.utc)
     decision = run_rules_engine(case, clauses)
-    t1 = datetime.utcnow()
+    t1 = datetime.now(timezone.utc)
     trace_events.append(_trace_event(
         run_id, seq := seq + 1, "rules_engine", "ok", t0, t1,
         f"clauses_count={len(clauses)}",
@@ -100,7 +100,7 @@ def run_decision_pipeline(case_id: str, db: Session) -> dict:
 
     # ── Step 4: Optional LLM rationale enhancement ───────────────────────────
     llm_used = False
-    t0 = datetime.utcnow()
+    t0 = datetime.now(timezone.utc)
     if llm_engine.llm_available():
         try:
             case_summary = (
@@ -121,7 +121,7 @@ def run_decision_pipeline(case_id: str, db: Session) -> dict:
             llm_status = f"error: {exc}"
     else:
         llm_status = "skipped (no API key)"
-    t1 = datetime.utcnow()
+    t1 = datetime.now(timezone.utc)
     trace_events.append(_trace_event(
         run_id, seq := seq + 1, "llm_enhancement", llm_status, t0, t1,
         f"llm_available={llm_engine.llm_available()}",
@@ -129,9 +129,9 @@ def run_decision_pipeline(case_id: str, db: Session) -> dict:
     ))
 
     # ── Step 5: Guardrail validation ─────────────────────────────────────────
-    t0 = datetime.utcnow()
+    t0 = datetime.now(timezone.utc)
     guardrail = guardrail_validate(case, clauses, decision)
-    t1 = datetime.utcnow()
+    t1 = datetime.now(timezone.utc)
     trace_events.append(_trace_event(
         run_id, seq := seq + 1, "guardrail_validator", guardrail["status"], t0, t1,
         f"determination={decision['determination']}, confidence={decision['confidence_score']}",
@@ -140,9 +140,9 @@ def run_decision_pipeline(case_id: str, db: Session) -> dict:
     ))
 
     # ── Step 6: Eval scoring ─────────────────────────────────────────────────
-    t0 = datetime.utcnow()
+    t0 = datetime.now(timezone.utc)
     evals = compute_evals(case, clauses, decision, guardrail)
-    t1 = datetime.utcnow()
+    t1 = datetime.now(timezone.utc)
     trace_events.append(_trace_event(
         run_id, seq := seq + 1, "eval_scoring", "ok", t0, t1,
         "computed from prior steps",
