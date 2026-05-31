@@ -14,8 +14,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          curl -sSfL \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.27.2/gitleaks_8.27.2_linux_x64.tar.gz \
+            | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/
       - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        # gitleaks CLI is MIT-licensed and free — only gitleaks-action@v2 requires a paid license
+        run: gitleaks detect --source . --redact --no-git=false
 
   pip-audit:
     runs-on: ubuntu-latest
@@ -58,7 +65,7 @@ jobs:
         working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4.4.0
         with:
           node-version: "20"
       - run: npm ci
