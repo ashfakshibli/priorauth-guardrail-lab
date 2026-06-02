@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+import uuid
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Case, PolicyDocument
@@ -34,13 +35,15 @@ def get_policy_context(case_id: str, db: Session = Depends(get_db)):
     return PolicyContextOut(case_id=case_id, policy_documents=docs)
 
 
-@router.post("/{case_id}/run-decision")
-def run_decision(case_id: str, db: Session = Depends(get_db)):
+@router.post("/{case_id}/run-decision", status_code=202)
+def run_decision(
+    case_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
-    try:
-        result = run_decision_pipeline(case_id, db)
-        return result
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+    run_id = str(uuid.uuid4())
+    background_tasks.add_task(run_decision_pipeline, case_id, db, run_id=run_id)
+    return {"run_id": run_id, "case_id": case_id, "status": "queued"}

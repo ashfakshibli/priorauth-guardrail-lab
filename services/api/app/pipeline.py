@@ -45,13 +45,13 @@ def _trace_event(
     )
 
 
-def run_decision_pipeline(case_id: str, db: Session) -> dict:
+def run_decision_pipeline(case_id: str, db: Session, run_id: str | None = None) -> dict:
     wall_start = time.time()
     case: Case | None = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise ValueError(f"Case {case_id} not found")
 
-    run_id = str(uuid.uuid4())
+    run_id = run_id if run_id is not None else str(uuid.uuid4())
     trace_events: list[TraceEvent] = []
     seq = 0
 

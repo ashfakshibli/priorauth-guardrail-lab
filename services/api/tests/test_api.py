@@ -48,34 +48,41 @@ class TestCaseDetail:
 
 class TestRunDecision:
     def test_run_decision_returns_valid_structure(self, client):
+        # POST returns 202 Accepted immediately with a run_id
         r = client.post("/api/cases/CASE-1004/run-decision")
-        assert r.status_code == 200
-        data = r.json()
-        assert "run_id" in data
-        assert data["determination"] in ("approve", "deny", "human_review")
-        assert 0.0 <= data["confidence_score"] <= 1.0
-        assert data["guardrail_status"] in ("pass", "warning", "fail")
-        assert isinstance(data["policy_citations"], list)
-        assert isinstance(data["guardrail_reasons"], list)
-        assert data["latency_ms"] >= 0
+        assert r.status_code == 202
+        queued = r.json()
+        assert "run_id" in queued
+        assert queued["status"] == "queued"
+        # TestClient runs background tasks synchronously — result is already persisted
+        run = client.get(f"/api/runs/{queued['run_id']}").json()
+        assert run["determination"] in ("approve", "deny", "human_review")
+        assert 0.0 <= run["confidence_score"] <= 1.0
+        assert run["guardrail_status"] in ("pass", "warning", "fail")
+        assert isinstance(run["policy_citations"], list)
+        assert isinstance(run["guardrail_reasons"], list)
+        assert run["latency_ms"] >= 0
 
     def test_clearly_approvable_case(self, client):
         # CASE-1001: biologic with documented DMARD failure → approve
         r = client.post("/api/cases/CASE-1001/run-decision")
-        data = r.json()
-        assert data["determination"] == "approve"
+        assert r.status_code == 202
+        run = client.get(f"/api/runs/{r.json()['run_id']}").json()
+        assert run["determination"] == "approve"
 
     def test_clearly_deniable_case(self, client):
         # CASE-1002: acute MRI < 6 weeks, no red flags → deny
         r = client.post("/api/cases/CASE-1002/run-decision")
-        data = r.json()
-        assert data["determination"] == "deny"
+        assert r.status_code == 202
+        run = client.get(f"/api/runs/{r.json()['run_id']}").json()
+        assert run["determination"] == "deny"
 
     def test_missing_evidence_case(self, client):
         # CASE-1008: no policy docs attached → human_review
         r = client.post("/api/cases/CASE-1008/run-decision")
-        data = r.json()
-        assert data["determination"] == "human_review"
+        assert r.status_code == 202
+        run = client.get(f"/api/runs/{r.json()['run_id']}").json()
+        assert run["determination"] == "human_review"
 
     def test_run_persists_trace(self, client):
         r = client.post("/api/cases/CASE-1007/run-decision")
@@ -104,8 +111,9 @@ class TestRunDecision:
     def test_llm_disabled_still_works(self, client, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         r = client.post("/api/cases/CASE-1004/run-decision")
-        assert r.status_code == 200
-        assert r.json()["llm_enhanced"] is False
+        assert r.status_code == 202
+        run = client.get(f"/api/runs/{r.json()['run_id']}").json()
+        assert run["llm_enhanced"] is False
 
 
 class TestRunEndpoints:
